@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: telegram-ai-chatbot
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        value: sk-7ZoyUuEjlVeDrcCbIwdE3yJXy9U840McF7HL5FZtIPKxp9s3vwaDCW3QjXteOPQG
+      - key: OPENAI_BASE_URL
+        value: https://opencode.ai/zen/v1/
+      - key: MODEL_ID
+        value: minimax-m2.5-free
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: PORT
+        value: 5000
