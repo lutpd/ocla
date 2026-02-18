@@ -28,6 +28,7 @@ OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://opencode.ai/zen/v1/")
 MODEL_ID = os.getenv("MODEL_ID", "minimax-m2.5-free")
 QDRANT_URL = os.getenv("QDRANT_URL")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL")
 
 COLLECTION_NAME = "telegram_chatbot"
 
@@ -37,6 +38,7 @@ openai_client = OpenAI(
 )
 
 qdrant_client: Optional[QdrantClient] = None
+application: Optional[Application] = None
 
 def init_qdrant():
     global qdrant_client
@@ -320,12 +322,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text(response)
 
-def main():
+def create_application():
+    global application
     if not TELEGRAM_BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN not provided!")
-        return
-    
-    init_qdrant()
+        raise ValueError("TELEGRAM_BOT_TOKEN is required")
     
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     
@@ -334,8 +335,26 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    logger.info("Starting bot...")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    return application
 
-if __name__ == "__main__":
-    main()
+async def setup_webhook():
+    global application
+    if not application:
+        return
+    
+    if not RENDER_EXTERNAL_URL:
+        logger.warning("RENDER_EXTERNAL_URL not set, skipping webhook setup")
+        return
+    
+    webhook_url = f"{RENDER_EXTERNAL_URL}/webhook"
+    await application.bot.set_webhook(url=webhook_url)
+    logger.info(f"Webhook set to: {webhook_url}")
+
+async def process_update(update_data: dict):
+    global application
+    if not application:
+        logger.error("Application not initialized")
+        return
+    
+    update = Update.de_json(update_data, application.bot)
+    await application.process_update(update)
